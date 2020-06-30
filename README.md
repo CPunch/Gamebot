@@ -3,14 +3,14 @@
 This bot lets you & your friends play Gameboy games together using PyBoy!
 
 <p align="center">
-    <img width="460" height="300" src="https://i.imgur.com/lmelWRG.gif">
-    <img width="460" height="300" src="https://i.imgur.com/HGh1UWf.gif">
+    <img width="480" height="432" src="https://i.imgur.com/lmelWRG.gif">
+    <img width="480" height="432" src="https://i.imgur.com/HGh1UWf.gif">
 </p>
 
 Inputs are also democratically voted on.
 
 <p align="center">
-    <img width="460" height="300" src="https://i.imgur.com/YO8MNC4.png">
+    <img width="460" height="280" src="https://i.imgur.com/YO8MNC4.png">
 </p>
 
 # Installation
