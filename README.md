@@ -25,4 +25,4 @@ Inputs are also democratically voted on.
 
 # Help & Support
 
-Join the discord here: https://discord.gg/F5cFyTD
+Join the discord here: https://discord.gg/JyU4EwBtFH
