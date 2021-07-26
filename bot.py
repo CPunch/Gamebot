@@ -44,10 +44,19 @@ ROMS = { # rom, default save, frames per request
     "dr_mario":("roms/dr_mario.gb", "roms/dr_mario.sv", 60),
 }
 
+# generates the save state
+for key in ROMS:
+    rom = ROMS[key]
+    print(rom[0])
+    vm = PyBoy(rom[0], window_type="headless")
+    for i in range(2000):
+        vm.tick()
+    vm.save_state(open(rom[1], "wb"))
+
 GIF_SHOOT_MODULUS = 8 # every frame a modules of this will be added to the gif
 SCALE = 3 # scale the images up in size before sending to discord
 COMMAND_PREFIX = '!'
-CLEAN_IDLE_GAMES = True # if a game doesn't have input for an hour, clean it up
+CLEAN_IDLE_GAMES = False # if a game doesn't have input for an hour, clean it up
 EMOJI_REACTIONS = [
     '⬆', # up arrow
     '⬇', # down arrow
@@ -99,6 +108,7 @@ def activateChannel(id, rom):
     ACTIVE_CHANNELS[id]["vm"] = vm
     ACTIVE_CHANNELS[id]["frames"] = ROMS[rom][2]
     ACTIVE_CHANNELS[id]["state"] = io.BytesIO(open(ROMS[rom][1], "rb").read()) # copy default state
+    #ACTIVE_CHANNELS[id]["state"] = io.BytesIO()
     ACTIVE_CHANNELS[id]["state"].seek(0)
 
 def saveState(id):
@@ -132,7 +142,7 @@ async def runGame(channel):
             message = None
             async with channel.typing(): # while we are loading the state & emulating 30 frames (1 second of gameplay)
                 frames = []
-                
+
                 # press button down for 1/4 a second
                 if "prebutton" in ACTIVE_CHANNELS[channel.id] and ACTIVE_CHANNELS[channel.id]["prebutton"] != None:
                     vm.send_input(ACTIVE_CHANNELS[channel.id]["prebutton"])
@@ -149,7 +159,7 @@ async def runGame(channel):
                     vm.tick()
                     if (i+15) % GIF_SHOOT_MODULUS == 0: # add a screen capture to the frame queue (we add 15 to match our previous frames)
                         frames.append(getScreenCap(vm))
-                
+
                 ACTIVE_CHANNELS[channel.id]["state"].seek(0)
                 vm.save_state(ACTIVE_CHANNELS[channel.id]["state"])
                 ACTIVE_CHANNELS[channel.id]["state"].seek(0)
@@ -164,21 +174,28 @@ async def runGame(channel):
                 frames[0].save(tmpImage, format='GIF', append_images=frames[1:], save_all=True, duration=((1000 * (ACTIVE_CHANNELS[channel.id]["frames"] / 60)) / len(frames)-1), optimize=True)
                 tmpImage.seek(0)
 
-                try:
-                    # send screenshot to the channel
-                    message = await channel.send(file=discord.File(tmpImage, filename="scrn.gif"))
+                reactionTry = 5
+                while reactionTry > 0:
+                    try:
+                        # send screenshot to the channel
+                        message = await channel.send(file=discord.File(tmpImage, filename="scrn.gif"))
 
-                    # add reactions to message
-                    for emoji in EMOJI_REACTIONS:
-                        await message.add_reaction(emoji)
-                except:
-                    ACTIVE_CHANNELS[channel.id]["active"] = False
-                    break;
+                        # add reactions to message
+                        for emoji in EMOJI_REACTIONS:
+                            await message.add_reaction(emoji)
+
+                        reactionTry = 0
+                    except:
+                        if message != None:
+                            await message.delete()
+
+                        reactionTry = reactionTry - 1
 
             waited_log = 0
             while ACTIVE_CHANNELS[channel.id]["active"]:
                 waited_log += 1
-                # if no activity for an hour, close session.
+
+               # if no activity for an hour, close session.
                 if CLEAN_IDLE_GAMES and channel.id not in WHITELISTED_CHANNELS and waited_log > 720:
                     ACTIVE_CHANNELS[channel.id]["active"] = False
                     saveState(channel.id)
@@ -195,7 +212,7 @@ async def runGame(channel):
                             most_reacted = (str(reaction), reaction.count)
                     else:
                         continue
-                
+
                 if most_reacted[1] == 1: # no reactions, wait for 5 more seconds
                     continue
 
@@ -239,7 +256,6 @@ class ROMSTATE(commands.Cog, name='ROM running/loading/saving'):
             if not rom in ROMS:
                 await ctx.message.channel.send("> ⛔ game '" + rom + "' not found! use 'list' to get a list of roms.")
                 return
-            
             if ctx.message.channel.id in ACTIVE_CHANNELS:
                 await ctx.message.channel.send("> ⛔ game is already running in this channel! use 'stop' to stop the current game.")
                 return
